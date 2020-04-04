@@ -33,21 +33,22 @@ extern "C" {
 // global variables within libjulia from here, we must instead manually import them via LoadLibrary
 // and GetProcAddress within `main()` below.  Read more about the ramifications of delay-loading here:
 // https://docs.microsoft.com/en-us/cpp/build/reference/constraints-of-delay-loading-dlls
+#ifdef _OS_WINDOWS_
 HANDLE hLibJulia = NULL;
 jl_module_t * get_jl_main_module() {
-#ifdef _OS_WINDOWS_
     return *((jl_module_t **)GetProcAddress(hLibJulia, "jl_main_module"));
-#else
-    return jl_main_module;
-#endif
 }
 jl_module_t * get_jl_base_module() {
-#ifdef _OS_WINDOWS_
     return *((jl_module_t **)GetProcAddress(hLibJulia, "jl_base_module"));
-#else
-    return jl_base_module;
-#endif
 }
+#else
+jl_module_t * get_jl_main_module() {
+    return jl_main_module;
+}
+jl_module_t * get_jl_base_module() {
+    return jl_base_module;
+}
+#endif
 
 static int exec_program(char *program)
 {
