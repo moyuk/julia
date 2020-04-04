@@ -35,8 +35,29 @@ ifeq ($(USE_BINARYBUILDER_LLVM),1)
 JLDFLAGS += $(call rpath_rel_link,$(call cygpath,$(shell $(LLVM_CONFIG_HOST) --libdir)))
 endif
 
+# Delay-import DLL on Windows, giving us time to insert entries into PATH
 ifeq ($(OS),WINNT)
-JLDFLAGS += -municode
+$(build_libdir)/import_libraries:
+	mkdir -p $@
+
+$(build_libdir)/import_libraries/libjulia.a: $(build_shlibdir)/libjulia.dll $(build_shlibdir)/libjulia.def | $(build_libdir)/import_libraries
+	$(DLLTOOL) -d $(build_shlibdir)/libjulia.def -D $(build_shlibdir)/libjulia.dll -y $@
+$(build_libdir)/import_libraries/libjulia-debug.a: $(build_shlibdir)/libjulia-debug.dll $(build_shlibdir)/libjulia-debug.def | $(build_libdir)/import_libraries
+	$(DLLTOOL) -d $(build_shlibdir)/libjulia-debug.def -D $(build_shlibdir)/libjulia-debug.dll -y $@
+
+LIBJULIA_LINK := $(build_libdir)/import_libraries/libjulia.a
+LIBJULIADEBUG_LINK := $(build_libdir)/import_libraries/libjulia-debug.a
+SHIPFLAGS += -DLIBJULIA_NAME="\"libjulia.dll\""
+DEBUGFLAGS += -DLIBJULIA_NAME="\"libjulia-debug.dll\""
+
+JLDFLAGS += -municode -static-libgcc
+CPPFLAGS_PATH = -DPATH_ENTRIES="\"$$(echo "$(call cygpath_w,$(CSL_SHLIBDIR));$(call cygpath_w,$(LLVM_SHLIBDIR))" | sed -e 's_\\_\\\\_g')\""
+
+$(build_bindir)/julia$(EXE): $(LIBJULIA_LINK)
+$(build_bindir)/julia-debug$(EXE): $(LIBJULIADEBUG_LINK)
+else
+LIBJULIA_LINK := -ljulia
+LIBJULIADEBUG_LINK := -ljulia-debug
 endif
 
 default: release
@@ -44,9 +65,9 @@ all: release debug
 release debug :  % : julia-%
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.c $(HEADERS)
-	@$(call PRINT_CC, $(CC) $(CPPFLAGS) $(CFLAGS) $(SHIPFLAGS) -c $< -o $@)
+	@$(call PRINT_CC, $(CC) $(CPPFLAGS) $(CPPFLAGS_PATH) $(CFLAGS) $(SHIPFLAGS) -c $< -o $@)
 $(BUILDDIR)/%.dbg.obj: $(SRCDIR)/%.c $(HEADERS)
-	@$(call PRINT_CC, $(CC) $(CPPFLAGS) $(CFLAGS) $(DEBUGFLAGS) -c $< -o $@)
+	@$(call PRINT_CC, $(CC) $(CPPFLAGS) $(CPPFLAGS_PATH) $(CFLAGS) $(DEBUGFLAGS) -c $< -o $@)
 
 ifeq ($(OS),WINNT)
 ifneq ($(USEMSVC), 1)

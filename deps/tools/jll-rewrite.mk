@@ -32,8 +32,8 @@ $$($(1)_SRC_DIR)/Artifacts.toml: | extract-$(1)
 $$($(1)_SRC_DIR)/jll-rewritten: $$($(1)_SRC_DIR)/Artifacts.toml
 	@GEN_SRC="$$($(1)_SRC_DIR)/src/$(1).jl"; \
 	ARTIFACT_INFO="$$$$($(PYTHON) $(call python_cygpath,$(JULIAHOME)/contrib/extract_artifact_info.py) $$(call python_cygpath,$$<) $(BB_TRIPLET_LIBGFORTRAN_CXXABI))"; \
-	TREEHASH="$$$$(echo $$$${ARTIFACT_INFO} | cut -d ' ' -f1)"; \
-	TRIPLET="$$$$(echo $$$${ARTIFACT_INFO} | cut -d ' ' -f3)"; \
+	TREEHASH="$$$$(echo $$$${ARTIFACT_INFO} | cut -d ' ' -f1 | xargs)"; \
+	TRIPLET="$$$$(echo $$$${ARTIFACT_INFO} | cut -d ' ' -f3 | xargs)"; \
 	WRAPPER="$$($(1)_SRC_DIR)/src/wrappers/$$$${TRIPLET}.jl"; \
 	REL_PATH="joinpath(dirname(dirname(STDLIB)), \\\"artifacts\\\", \\\"$$$$TREEHASH\\\")"; \
 	echo "module $(1)" > "$$$${GEN_SRC}"; \

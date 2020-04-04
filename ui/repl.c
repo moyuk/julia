@@ -29,10 +29,30 @@ JULIA_DEFINE_FAST_TLS()
 extern "C" {
 #endif
 
+// Because windows now uses a delay-load library for RPATH emulation, we cannot directly access
+// global variables within libjulia from here, we must instead manually import them via LoadLibrary
+// and GetProcAddress within `main()` below.  Read more about the ramifications of delay-loading here:
+// https://docs.microsoft.com/en-us/cpp/build/reference/constraints-of-delay-loading-dlls
+HANDLE hLibJulia = NULL;
+jl_module_t * get_jl_main_module() {
+#ifdef _OS_WINDOWS_
+    return *((jl_module_t **)GetProcAddress(hLibJulia, "jl_main_module"));
+#else
+    return jl_main_module;
+#endif
+}
+jl_module_t * get_jl_base_module() {
+#ifdef _OS_WINDOWS_
+    return *((jl_module_t **)GetProcAddress(hLibJulia, "jl_base_module"));
+#else
+    return jl_base_module;
+#endif
+}
+
 static int exec_program(char *program)
 {
     JL_TRY {
-        jl_load(jl_main_module, program);
+        jl_load(get_jl_main_module(), program);
     }
     JL_CATCH {
         jl_value_t *errs = jl_stderr_obj();
@@ -40,7 +60,7 @@ static int exec_program(char *program)
         jl_printf(JL_STDERR, "error during bootstrap:\n");
         JL_TRY {
             if (errs) {
-                jl_value_t *showf = jl_get_function(jl_base_module, "show");
+                jl_value_t *showf = jl_get_function(get_jl_base_module(), "show");
                 if (showf != NULL) {
                     jl_call2(showf, errs, jl_current_exception());
                     jl_printf(JL_STDERR, "\n");
@@ -67,8 +87,8 @@ void jl_lisp_prompt();
 static void print_profile(void)
 {
     size_t i;
-    void **table = jl_base_module->bindings.table;
-    for(i=1; i < jl_base_module->bindings.size; i+=2) {
+    void **table = get_jl_base_module()->bindings.table;
+    for(i=1; i < get_jl_base_module()->bindings.size; i+=2) {
         if (table[i] != HT_NOTFOUND) {
             jl_binding_t *b = (jl_binding_t*)table[i];
             if (b->value != NULL && jl_is_function(b->value) &&
@@ -86,8 +106,9 @@ static NOINLINE int true_main(int argc, char *argv[])
 {
     jl_set_ARGS(argc, argv);
 
-    jl_function_t *start_client = jl_base_module ?
-        (jl_function_t*)jl_get_global(jl_base_module, jl_symbol("_start")) : NULL;
+    jl_module_t * base_module = get_jl_base_module();
+    jl_function_t *start_client = base_module ?
+        (jl_function_t*)jl_get_global(base_module, jl_symbol("_start")) : NULL;
 
     if (start_client) {
         JL_TRY {
@@ -153,6 +174,8 @@ int main(int argc, char *argv[])
     uv_setup_args(argc, argv); // no-op on Windows
 #else
 
+#include <tchar.h>
+#define ENVVAR_MAXLEN 32760
 static void lock_low32() {
 #if defined(_P64) && defined(JL_DEBUG_BUILD)
     // Wine currently has a that causes it to answer VirtualQuery incorrectly.
@@ -190,6 +213,28 @@ static void lock_low32() {
 }
 int wmain(int argc, wchar_t *argv[], wchar_t *envp[])
 {
+    // On windows, we simulate RPATH by pushing onto PATH
+    LPSTR pathVal = (LPSTR) malloc(ENVVAR_MAXLEN*sizeof(TCHAR));
+    DWORD dwRet = GetEnvironmentVariable("PATH", pathVal, ENVVAR_MAXLEN);
+    if (dwRet == 0) {
+        // If we cannot get PATH, then our job is easy!
+        pathVal[0] = '\0';
+        lstrcat(pathVal, TEXT(PATH_ENTRIES));
+    } else {
+        // Otherwise, we append, if we have enough space to:
+        if (ENVVAR_MAXLEN - dwRet < _tcslen(PATH_ENTRIES) ) {
+            printf("ERROR: Cannot append entries to PATH: not enough space in environment block.  Reduce size of PATH!");
+            exit(1);
+        }
+        lstrcat(pathVal, TEXT(";"));
+        lstrcat(pathVal, TEXT(PATH_ENTRIES));
+    }
+    SetEnvironmentVariable("PATH", pathVal);
+    free(pathVal);
+
+    // Once we've set up our PATH, explicitly load libjulia.dll for global symbol lookups later.
+    hLibJulia = LoadLibrary(TEXT(LIBJULIA_NAME));
+
     int i;
     lock_low32();
     for (i=0; i<argc; i++) { // write the command line to UTF8
