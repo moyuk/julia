@@ -403,7 +403,7 @@ jl_method_instance_t *jl_get_unspecialized(jl_method_instance_t *method JL_PROPA
 JL_DLLEXPORT int jl_compile_hint(jl_tupletype_t *types);
 jl_code_info_t *jl_code_for_interpreter(jl_method_instance_t *lam JL_PROPAGATES_ROOT);
 int jl_code_requires_compiler(jl_code_info_t *src);
-jl_code_info_t *jl_new_code_info_from_ast(jl_expr_t *ast);
+jl_code_info_t *jl_new_code_info_from_ir(jl_expr_t *ast);
 JL_DLLEXPORT jl_code_info_t *jl_new_code_info_uninit(void);
 
 jl_value_t *jl_argtype_with_function(jl_function_t *f, jl_value_t *types);
@@ -1049,7 +1049,6 @@ struct jl_typemap_assoc {
     // inputs
     jl_value_t *const types;
     size_t const world;
-    size_t const max_world_mask;
     // outputs
     jl_svec_t *env; // subtype env (initialize to null to perform intersection without an environment)
     size_t min_valid;
@@ -1162,6 +1161,7 @@ extern jl_sym_t *throw_undef_if_not_sym; extern jl_sym_t *getfield_undefref_sym;
 extern jl_sym_t *gc_preserve_begin_sym; extern jl_sym_t *gc_preserve_end_sym;
 extern jl_sym_t *failed_sym; extern jl_sym_t *done_sym; extern jl_sym_t *runnable_sym;
 extern jl_sym_t *coverageeffect_sym; extern jl_sym_t *escape_sym;
+extern jl_sym_t *optlevel_sym;
 
 struct _jl_sysimg_fptrs_t;
 

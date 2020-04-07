@@ -62,6 +62,7 @@ jl_sym_t *throw_undef_if_not_sym; jl_sym_t *getfield_undefref_sym;
 jl_sym_t *gc_preserve_begin_sym; jl_sym_t *gc_preserve_end_sym;
 jl_sym_t *coverageeffect_sym; jl_sym_t *escape_sym;
 jl_sym_t *aliasscope_sym; jl_sym_t *popaliasscope_sym;
+jl_sym_t *optlevel_sym;
 
 static uint8_t flisp_system_image[] = {
 #include <julia_flisp.boot.inc>
@@ -380,6 +381,7 @@ void jl_init_frontend(void)
     isdefined_sym = jl_symbol("isdefined");
     nospecialize_sym = jl_symbol("nospecialize");
     specialize_sym = jl_symbol("specialize");
+    optlevel_sym = jl_symbol("optlevel");
     macrocall_sym = jl_symbol("macrocall");
     escape_sym = jl_symbol("escape");
     hygienicscope_sym = jl_symbol("hygienic-scope");
@@ -598,7 +600,7 @@ static jl_value_t *scm_to_julia_(fl_context_t *fl_ctx, value_t e, jl_module_t *m
             e = cdr_(e);
         }
         if (sym == lambda_sym)
-            ex = (jl_value_t*)jl_new_code_info_from_ast((jl_expr_t*)ex);
+            ex = (jl_value_t*)jl_new_code_info_from_ir((jl_expr_t*)ex);
         JL_GC_POP();
         if (sym == list_sym)
             return (jl_value_t*)((jl_expr_t*)ex)->args;
