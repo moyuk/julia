@@ -153,10 +153,7 @@ function eval_user_input(errio, @nospecialize(ast), show_value::Bool)
 end
 
 function _parse_input_line_core(s::String, filename::String)
-    JL_PARSE_ALL = 3
-    ex,_ = ccall(:jl_parse, Any,
-                 (Ptr{UInt8}, Csize_t, Ptr{UInt8}, Csize_t, Csize_t, Cint),
-                 s, sizeof(s), filename, sizeof(filename), 0, JL_PARSE_ALL)
+    ex = Meta.parseall(s, filename=filename)
     if ex isa Expr && ex.head === :toplevel
         if isempty(ex.args)
             return nothing
