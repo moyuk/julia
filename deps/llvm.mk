@@ -517,4 +517,7 @@ $(eval $(call install-jll-and-artifact,libLLVM_jll))
 # Insert llvm -> libLLVM naming adapters
 $(eval $(call fix-artifact-naming-mismatch,llvm,libLLVM_jll))
 
+# Add rules to install Clang_jll
+$(eval $(call install-jll-and-artifact,Clang_jll))
+
 endif # USE_BINARYBUILDER_LLVM

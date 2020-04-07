@@ -1190,17 +1190,33 @@ ifeq ($(USE_BINARYBUILDER_LLVM),1)
   LLVM_SHLIBDIR = $(libLLVM_jll_DIR)/$(binlib)
   LLVM_CONFIG = $(libLLVM_jll_DIR)/tools/llvm-config$(EXE)
 
+  $(eval $(call find_jll,Clang_jll))
+  CLANG_EXE = $(Clang_jll_DIR)/tools/clang$(EXE)
+  CLANG_INCDIR = $(Clang_jll_DIR)/include
+
   # Add both LLVM.dll and libLLVM.dll onto the list of rewrite targets
   WINNT_REWRITE_LIBS += LLVM.dll:libLLVM_jll_DIR
   WINNT_REWRITE_LIBS += libLLVM.dll:libLLVM_jll_DIR
 
+# In order to run `clang`, we need to tell it where to find its libraries
+ifneq (,$(findstring Linux,$(BUILD_OS))$(findstring FreeBSD,$(BUILD_OS)))
+  CLANG_HOST_PATH_ADJUST = LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$(LLVM_SHLIBDIR):$(CSL_SHLIBDIR)
+else ifneq (,$(findstring Darwin,$(BUILD_OS)))
+  CLANG_HOST_PATH_ADJUST = DYLD_LIBRARY_PATH=$$DYLD_LIBRARY_PATH:$(LLVM_SHLIBDIR):$(CSL_SHLIBDIR)
+else ifneq (,$(findstring CYGWIN,$(BUILD_OS))$(findstring WINNT,$(BUILD_OS)))
+  CLANG_HOST_PATH_ADJUST = PATH=$$PATH:$(LLVM_SHLIBDIR):$(CSL_SHLIBDIR)
+endif
+
 # If we're on windows/cygwin, llvm-config-host.exe won't have an
 # RPATH and may require some help finding its supporting libraries:
 ifneq (,$(findstring CYGWIN,$(BUILD_OS))$(findstring WINNT,$(BUILD_OS)))
-  LLVM_CONFIG_HOST_PATH_ADJUST = PATH=$$PATH:$(libLLVM_jll_DIR)/bin:$(CSL_SHLIBDIR)
+  LLVM_CONFIG_HOST_PATH_ADJUST = PATH=$$PATH:$(LLVM_SHLIBDIR):$(CSL_SHLIBDIR)
 endif
 else
   LLVM_CONFIG = $(build_depsbindir)/llvm-config$(EXE)
+  LLVM_SHLIBDIR = $(build_shlibdir)
+  CLANG_EXE = $(build_depsbindir)/clang$(EXE)
+  CLANG_INCDIR = $(build_includedir)
 endif # USE_BINARYBUILDER_LLVM
 endif # USE_SYSTEM_LLVM
 endif # LLVM_CONFIG undefined
