@@ -41,12 +41,24 @@ jl_module_t * get_jl_main_module() {
 jl_module_t * get_jl_base_module() {
     return *((jl_module_t **)GetProcAddress(hLibJulia, "jl_base_module"));
 }
+JL_STREAM * get_jl_stdout() {
+    return *((JL_STREAM **)GetProcAddress(hLibJulia, "jl_uv_stdout"));
+}
+JL_STREAM * get_jl_stderr() {
+    return *((JL_STREAM **)GetProcAddress(hLibJulia, "jl_uv_stderr"));
+}
 #else
 jl_module_t * get_jl_main_module() {
     return jl_main_module;
 }
 jl_module_t * get_jl_base_module() {
     return jl_base_module;
+}
+JL_STREAM * get_jl_stdout() {
+    return JL_STDOUT;
+}
+JL_STREAM * get_jl_stderr() {
+    return JL_STDERR;
 }
 #endif
 
@@ -58,13 +70,13 @@ static int exec_program(char *program)
     JL_CATCH {
         jl_value_t *errs = jl_stderr_obj();
         volatile int shown_err = 0;
-        jl_printf(JL_STDERR, "error during bootstrap:\n");
+        jl_printf(get_jl_stderr(), "error during bootstrap:\n");
         JL_TRY {
             if (errs) {
                 jl_value_t *showf = jl_get_function(get_jl_base_module(), "show");
                 if (showf != NULL) {
                     jl_call2(showf, errs, jl_current_exception());
-                    jl_printf(JL_STDERR, "\n");
+                    jl_printf(get_jl_stderr(), "\n");
                     shown_err = 1;
                 }
             }
@@ -72,11 +84,11 @@ static int exec_program(char *program)
         JL_CATCH {
         }
         if (!shown_err) {
-            jl_static_show(JL_STDERR, jl_current_exception());
-            jl_printf(JL_STDERR, "\n");
+            jl_static_show(get_jl_stderr(), jl_current_exception());
+            jl_printf(get_jl_stderr(), "\n");
         }
         jlbacktrace();
-        jl_printf(JL_STDERR, "\n");
+        jl_printf(get_jl_stderr(), "\n");
         return 1;
     }
     return 0;
@@ -94,7 +106,7 @@ static void print_profile(void)
             jl_binding_t *b = (jl_binding_t*)table[i];
             if (b->value != NULL && jl_is_function(b->value) &&
                 jl_is_gf(b->value)) {
-                jl_printf(JL_STDERR, "%d\t%s\n",
+                jl_printf(get_jl_stderr(), "%d\t%s\n",
                            jl_gf_mtable(b->value)->ncalls,
                            jl_gf_name(b->value)->name);
             }
@@ -143,14 +155,14 @@ static NOINLINE int true_main(int argc, char *argv[])
             line = ios_readline(ios_stdin);
             jl_value_t *val = (jl_value_t*)jl_eval_string(line);
             if (jl_exception_occurred()) {
-                jl_printf(JL_STDERR, "error during run:\n");
-                jl_static_show(JL_STDERR, jl_exception_occurred());
+                jl_printf(get_jl_stderr(), "error during run:\n");
+                jl_static_show(get_jl_stderr(), jl_exception_occurred());
                 jl_exception_clear();
             }
             else if (val) {
-                jl_static_show(JL_STDOUT, val);
+                jl_static_show(get_jl_stdout(), val);
             }
-            jl_printf(JL_STDOUT, "\n");
+            jl_printf(get_jl_stdout(), "\n");
             free(line);
             line = NULL;
             uv_run(jl_global_event_loop(),UV_RUN_NOWAIT);
@@ -160,9 +172,9 @@ static NOINLINE int true_main(int argc, char *argv[])
                 free(line);
                 line = NULL;
             }
-            jl_printf(JL_STDERR, "\nparser error:\n");
-            jl_static_show(JL_STDERR, jl_current_exception());
-            jl_printf(JL_STDERR, "\n");
+            jl_printf(get_jl_stderr(), "\nparser error:\n");
+            jl_static_show(get_jl_stderr(), jl_current_exception());
+            jl_printf(get_jl_stderr(), "\n");
             jlbacktrace();
         }
     }
