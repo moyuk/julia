@@ -102,7 +102,7 @@ PYTHON := "$(shell which python 2>/dev/null || which python3 2>/dev/null || whic
 PYTHON_SYSTEM := $(shell $(PYTHON) -c 'from __future__ import print_function; import platform; print(platform.system())')
 
 # If we're running on Cygwin, but using a native-windows Python, we need to use cygpath -w
-ifneq ($(and $(filter $(PYTHON_SYSTEM),Windows),$(findstring CYGWIN,$(BUILD_OS))),)
+ifneq ($(and $(filter $(PYTHON_SYSTEM),Windows),$(findstring CYGWIN,$(shell uname))),)
 python_cygpath = `cygpath -w $(1)`
 else
 python_cygpath = $(1)
