@@ -169,8 +169,7 @@ include(string((length(Core.ARGS)>=2 ? Core.ARGS[2] : ""), "version_git.jl")) # 
 # a slightly more verbose fashion than usual, because we're running so early.
 const DL_LOAD_PATH = String[]
 let os = ccall(:jl_get_UNAME, Any, ()),
-    pathsep = (os == :Windows || os == :NT) ? "\\" : "/",
-    BINDIR = ccall(:jl_get_julia_bindir, String, ())
+    pathsep = (os == :Windows || os == :NT) ? "\\" : "/"
 
     if (os == :Darwin || os == :Apple)
         if Base.DARWIN_FRAMEWORK
@@ -182,9 +181,10 @@ let os = ccall(:jl_get_UNAME, Any, ()),
     end
 
     # Include some paths for JLL libraries that we need (like pcre) that are so early
-    # in our boot-up process that we can't use even rewritten JLL packages
+    # in our boot-up process that we can't use even rewritten JLL packages.  We use
+    # the `@executable_path` format here, having taught `dlload.c` to
     if !isempty(Base.PCRE_JLL_LIBDIR)
-        push!(DL_LOAD_PATH, string(BINDIR, pathsep, Base.PCRE_JLL_LIBDIR))
+        push!(DL_LOAD_PATH, string("@executable_path", pathsep, Base.PCRE_JLL_LIBDIR))
     end
 end
 

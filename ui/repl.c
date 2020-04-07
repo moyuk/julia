@@ -34,7 +34,7 @@ extern "C" {
 // and GetProcAddress within `main()` below.  Read more about the ramifications of delay-loading here:
 // https://docs.microsoft.com/en-us/cpp/build/reference/constraints-of-delay-loading-dlls
 #ifdef _OS_WINDOWS_
-HANDLE hLibJulia = NULL;
+HMODULE hLibJulia = NULL;
 jl_module_t * get_jl_main_module() {
     return *((jl_module_t **)GetProcAddress(hLibJulia, "jl_main_module"));
 }
