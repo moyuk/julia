@@ -451,8 +451,30 @@ CXX_DISABLE_ASSERTION := -DJL_NDEBUG
 DISABLE_ASSERTIONS := -DNDEBUG -DJL_NDEBUG
 endif
 
-# Compiler specific stuff
+ifneq (,$(findstring Linux,$(BUILD_OS))$(findstring FreeBSD,$(BUILD_OS)))
+EXE_ENV_VAR := PATH
+LIB_ENV_VAR := LD_LIBRARY_PATH
+PATHSEP := :
+else ifneq (,$(findstring Darwin,$(BUILD_OS)))
+EXE_ENV_VAR := PATH
+LIB_ENV_VAR := DYLD_LIBRARY_PATH
+PATHSEP := :
+else ifneq (,$(findstring WINNT,$(BUILD_OS))$(findstring CYGWIN,$(BUILD_OS)))
+EXE_ENV_VAR := PATH
+LIB_ENV_VAR :=
+PATHSEP := ;
+endif
 
+# Use this to set up the appropriate environment variables to run things like `clang` from `Clang_jll`.
+# Example usage: $(call jll_env_adjust,libLLVM_jll CompilerSupportLibraries_jll) clang --version
+define env_adjust
+$(EXE_ENV_VAR)=$(subst $(SPACE),$(PATHSEP),$(1))$(PATHSEP)$$$(EXE_ENV_VAR) $(if $(LIB_ENV_VAR),$(LIB_ENV_VAR)=$(subst $(SPACE),:,$(2)):$$$(LIB_ENV_VAR),)
+endef
+define jll_env_adjust
+$(call env_adjust,$(foreach name,$(1),$($(name)_DIR)/bin $($(name)_DIR)/tools),$(foreach name,$(1),$($(name)_DIR)/lib))
+endef
+
+# Compiler specific stuff
 ifeq ($(USEMSVC), 1)
 USEGCC := 0
 USECLANG := 0
@@ -1048,10 +1070,14 @@ define artifact_treehash
 $(shell $(PYTHON) $(call python_cygpath,$(JULIAHOME)/contrib/extract_artifact_info.py) $(call python_cygpath,$(build_datarootdir)/julia/stdlib/$(VERSDIR)/$(1)/Artifacts.toml) $(BB_TRIPLET_LIBGFORTRAN_CXXABI) | cut -d' ' -f1)
 endef
 
-# Find the directory an artifact will be unpacked into
+# Find the directory an artifact will be unpacked into.  Note that this uses the
+# `hit_cache` function to maintain high efficiency while building; it will attempt
+# to expand $(1)_TREEHASH at rule invocation time, and any non-empty value will be
+# cached from then on, causing usage of `$(1)_DIR` to be slow the first time, but
+# fast after.
 define find_jll
-$(1)_TREEHASH = $$(call artifact_treehash,$(1))
-$(1)_DIR = $(build_datarootdir)/julia/artifacts/$$(call hit_cache,$(1)_TREEHASH)
+$(1)_TREEHASH=$$(call artifact_treehash,$(1))
+$(1)_DIR=$(build_datarootdir)/julia/artifacts/$$(call hit_cache,$(1)_TREEHASH)
 endef
 
 # Get a path relative to the bindir directory
@@ -1059,14 +1085,8 @@ define binrel_path
 $(shell $(PYTHON) $(call python_cygpath,$(JULIAHOME)/contrib/relative_path.py) "$(build_bindir)" "$(1)")
 endef
 
-# usage: $(call rewrite_dll_flag,libLLVM.dll,libLLVM_jll_DIR,$(build_bindir)/julia.exe)
-define rewrite_dll_flag
---rewrite "$(1):$$($(PYTHON) $(call python_cygpath,$(JULIAHOME)/contrib/relative_path.py) $(build_bindir) $($(2))/$(binlib)/$(1))"
-endef
-# Build a rewrite rule for a library in a JLL.
-# Usage: $(call rewrite_dll_imports,$@,$(WINNT_REWRITE_LIBS))
-define rewrite_dll_imports
-$(PYTHON) $(call python_cygpath,$(JULIAHOME)/contrib/rewrite_imports.py) --verbose $(foreach pair,$(2),$(call rewrite_dll_flag,$(firstword $(subst :, ,$(pair))),$(lastword $(subst :, ,$(pair))),$(1))) $(call python_cygpath,$(1))
+define jll_shlibdir
+$($(1)_DIR)/$(binlib)
 endef
 
 ifeq ($(USE_SYSTEM_LIBUV), 1)
@@ -1172,12 +1192,6 @@ endif # $(OS) == WINNT
 ifeq ($(USE_BINARYBUILDER_CSL),1)
 $(eval $(call find_jll,CompilerSupportLibraries_jll))
 CSL_SHLIBDIR = $(CompilerSupportLibraries_jll_DIR)/$(binlib)
-
-# Add a few CSL libraries onto the list of rewrite targets
-WINNT_REWRITE_LIBS += libgcc_s_seh-1.dll:CompilerSupportLibraries_jll_DIR
-WINNT_REWRITE_LIBS += libssp-0.dll:CompilerSupportLibraries_jll_DIR
-WINNT_REWRITE_LIBS += libstdc++-6.dll:CompilerSupportLibraries_jll_DIR
-WINNT_REWRITE_LIBS += libwinpthread-1.dll:CompilerSupportLibraries_jll_DIR
 endif
 
 
@@ -1187,31 +1201,12 @@ ifeq ($(USE_SYSTEM_LLVM), 1)
 else
 ifeq ($(USE_BINARYBUILDER_LLVM),1)
   $(eval $(call find_jll,libLLVM_jll))
-  LLVM_SHLIBDIR = $(libLLVM_jll_DIR)/$(binlib)
+  LIBLLVM_SHLIBDIR = $(libLLVM_jll_DIR)/$(binlib)
   LLVM_CONFIG = $(libLLVM_jll_DIR)/tools/llvm-config$(EXE)
 
   $(eval $(call find_jll,Clang_jll))
-  CLANG_EXE = $(Clang_jll_DIR)/tools/clang$(EXE)
+  CLANG_EXE = $(call jll_env_adjust,libLLVM_jll CompilerSupportLibraries_jll) $(Clang_jll_DIR)/tools/clang$(EXE)
   CLANG_INCDIR = $(Clang_jll_DIR)/include
-
-  # Add both LLVM.dll and libLLVM.dll onto the list of rewrite targets
-  WINNT_REWRITE_LIBS += LLVM.dll:libLLVM_jll_DIR
-  WINNT_REWRITE_LIBS += libLLVM.dll:libLLVM_jll_DIR
-
-# In order to run `clang`, we need to tell it where to find its libraries
-ifneq (,$(findstring Linux,$(BUILD_OS))$(findstring FreeBSD,$(BUILD_OS)))
-  CLANG_HOST_PATH_ADJUST = LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$(LLVM_SHLIBDIR):$(CSL_SHLIBDIR)
-else ifneq (,$(findstring Darwin,$(BUILD_OS)))
-  CLANG_HOST_PATH_ADJUST = DYLD_LIBRARY_PATH=$$DYLD_LIBRARY_PATH:$(LLVM_SHLIBDIR):$(CSL_SHLIBDIR)
-else ifneq (,$(findstring CYGWIN,$(BUILD_OS))$(findstring WINNT,$(BUILD_OS)))
-  CLANG_HOST_PATH_ADJUST = PATH=$$PATH:$(LLVM_SHLIBDIR):$(CSL_SHLIBDIR)
-endif
-
-# If we're on windows/cygwin, llvm-config-host.exe won't have an
-# RPATH and may require some help finding its supporting libraries:
-ifneq (,$(findstring CYGWIN,$(BUILD_OS))$(findstring WINNT,$(BUILD_OS)))
-  LLVM_CONFIG_HOST_PATH_ADJUST = PATH=$$PATH:$(LLVM_SHLIBDIR):$(CSL_SHLIBDIR)
-endif
 else
   LLVM_CONFIG = $(build_depsbindir)/llvm-config$(EXE)
   LLVM_SHLIBDIR = $(build_shlibdir)
@@ -1226,12 +1221,12 @@ ifeq ($(USE_SYSTEM_LLVM), 1)
 endif # SYSTEM_LLVM
 
 ifeq ($(BUILD_OS),$(OS))
-  LLVM_CONFIG_HOST = $(LLVM_CONFIG_HOST_PATH_ADJUST) $(LLVM_CONFIG)
+  LLVM_CONFIG_HOST = $(call jll_env_adjust,CompilerSupportLibraries_jll) $(LLVM_CONFIG)
 else
-  LLVM_CONFIG_HOST = $(LLVM_CONFIG_HOST_PATH_ADJUST) $(basename $(LLVM_CONFIG))-host$(BUILD_EXE)
+  LLVM_CONFIG_HOST = $(call jll_env_adjust,CompilerSupportLibraries_jll) $(basename $(LLVM_CONFIG))-host$(BUILD_EXE)
 ifneq (exists, $(shell [ -f '$(LLVM_CONFIG_HOST)' ] && echo exists ))
   # llvm-config-host does not exist (cmake build)
-  LLVM_CONFIG_HOST = $(LLVM_CONFIG_HOST_PATH_ADJUST) $(call spawn,$(LLVM_CONFIG))
+  LLVM_CONFIG_HOST = $(call jll_env_adjust,CompilerSupportLibraries_jll) $(call spawn,$(LLVM_CONFIG))
 endif
 endif
 
