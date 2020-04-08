@@ -448,7 +448,7 @@ function include(fname::AbstractString)
     end
     return result
 end
-eval(x) = Core.eval(Main, x)
+eval(x) = Base.eval(Main, x)
 end
 
 """
