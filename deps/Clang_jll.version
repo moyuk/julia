@@ -1,0 +1,4 @@
+CLANG_JLL_BRANCH = master
+CLANG_JLL_SHA1 = 32d4de83190fc863cc739b21472b4943b234bf15
+CLANG_JLL_GIT_URL := git://github.com/JuliaBinaryWrappers/Clang_jll.jl.git
+CLANG_JLL_TAR_URL = https://api.github.com/repos/JuliaBinaryWrappers/Clang_jll.jl/tarball/$1

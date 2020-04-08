@@ -376,7 +376,7 @@ cleanall: clean clean-flisp clean-support clean-analyzegc
 # Note that for a default install, you will need to have run the following
 # before attempting this static analysis, so that all necessary headers
 # and dependencies are properly installed:
-#   make -c deps install-llvm install-libuv install-utf8proc install-unwind
+#   make -c deps install-libllvm install-libuv install-utf8proc install-unwind
 analyzegc-deps-check: $(BUILDDIR)/julia_version.h $(BUILDDIR)/julia_flisp.boot.inc
 ifeq ($(USE_BINARYBUILDER_LLVM),0)
 ifneq ($(BUILD_LLVM_CLANG),1)

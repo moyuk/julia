@@ -304,7 +304,7 @@ LLVM_CMAKE += -DLLVM_VERSION_SUFFIX:STRING="jl"
 
 ifeq ($(BUILD_CUSTOM_LIBCXX),1)
 LIBCXX_DEPENDENCY := $(build_libdir)/libc++abi.so.1.0 $(build_libdir)/libc++.so.1.0
-get-llvm: get-libcxx get-libcxxabi
+get-libllvm: get-libcxx get-libcxxabi
 endif
 
 $(LLVM_SRC_DIR)/source-extracted: | $(LLVM_TAR) $(LLVM_CLANG_TAR) $(LLVM_COMPILER_RT_TAR) $(LLVM_LIBCXX_TAR) $(LLVM_LLDB_TAR)
@@ -374,7 +374,7 @@ endef
 ifeq ($(LLVM_VER_SHORT),8.0)
 $(eval $(call LLVM_PATCH,llvm-D27629-AArch64-large_model_6.0.1))
 $(eval $(call LLVM_PATCH,llvm8-D34078-vectorize-fdiv))
-$(eval $(call LLVM_PATCH,llvm-6.0-NVPTX-addrspaces)) # NVPTX -- warning: this fails check-llvm-codegen-nvptx
+$(eval $(call LLVM_PATCH,llvm-6.0-NVPTX-addrspaces)) # NVPTX -- warning: this fails check-libllvm-codegen-nvptx
 $(eval $(call LLVM_PATCH,llvm-7.0-D44650)) # mingw32 build fix
 $(eval $(call LLVM_PATCH,llvm-6.0-DISABLE_ABI_CHECKS))
 $(eval $(call LLVM_PATCH,llvm7-D50010-VNCoercion-ni))
@@ -399,7 +399,7 @@ endif # LLVM_VER 8.0
 ifeq ($(LLVM_VER_SHORT),9.0)
 $(eval $(call LLVM_PATCH,llvm-D27629-AArch64-large_model_6.0.1))
 $(eval $(call LLVM_PATCH,llvm8-D34078-vectorize-fdiv))
-$(eval $(call LLVM_PATCH,llvm-6.0-NVPTX-addrspaces)) # NVPTX -- warning: this fails check-llvm-codegen-nvptx
+$(eval $(call LLVM_PATCH,llvm-6.0-NVPTX-addrspaces)) # NVPTX -- warning: this fails check-libllvm-codegen-nvptx
 $(eval $(call LLVM_PATCH,llvm-7.0-D44650)) # mingw32 build fix
 $(eval $(call LLVM_PATCH,llvm9-D50010-VNCoercion-ni))
 $(eval $(call LLVM_PATCH,llvm8-WASM-addrspaces)) # WebAssembly
@@ -415,7 +415,7 @@ endif # LLVM_VER 9.0
 ifeq ($(LLVM_VER_SHORT),10.0)
 $(eval $(call LLVM_PATCH,llvm-D27629-AArch64-large_model_6.0.1))
 $(eval $(call LLVM_PATCH,llvm8-D34078-vectorize-fdiv))
-$(eval $(call LLVM_PATCH,llvm-6.0-NVPTX-addrspaces)) # NVPTX -- warning: this fails check-llvm-codegen-nvptx
+$(eval $(call LLVM_PATCH,llvm-6.0-NVPTX-addrspaces)) # NVPTX -- warning: this fails check-libllvm-codegen-nvptx
 $(eval $(call LLVM_PATCH,llvm-7.0-D44650)) # mingw32 build fix
 $(eval $(call LLVM_PATCH,llvm9-D50010-VNCoercion-ni))
 $(eval $(call LLVM_PATCH,llvm8-WASM-addrspaces)) # WebAssembly
@@ -457,7 +457,7 @@ ifeq ($(OS),$(BUILD_OS))
 endif
 	echo 1 > $@
 
-$(build_prefix)/manifest/llvm: | $(llvm_python_workaround)
+$(build_prefix)/manifest/libllvm: | $(llvm_python_workaround)
 
 LLVM_INSTALL = \
 	cd $1 && mkdir -p $2$$(build_depsbindir) && \
@@ -474,31 +474,31 @@ endif
 $(eval $(call staged-install,llvm,llvm-$$(LLVM_VER)/build_$$(LLVM_BUILDTYPE), \
 	LLVM_INSTALL,,,))
 
-clean-llvm: clean-libcxx clean-libcxxabi
+clean-libllvm: clean-libcxx clean-libcxxabi
 	-rm $(LLVM_BUILDDIR_withtype)/build-configured $(LLVM_BUILDDIR_withtype)/build-compiled
 	-$(MAKE) -C $(LLVM_BUILDDIR_withtype) clean
 
-distclean-llvm: distclean-libcxx distclean-libcxxabi
+distclean-libllvm: distclean-libcxx distclean-libcxxabi
 	-rm -rf $(LLVM_TAR) $(LLVM_CLANG_TAR) \
 		$(LLVM_COMPILER_RT_TAR) $(LLVM_LIBCXX_TAR) $(LLVM_LLDB_TAR) \
 		$(LLVM_SRC_DIR) $(LLVM_BUILDDIR_withtype)
 
 
 ifneq ($(LLVM_VER),svn)
-get-llvm: $(LLVM_TAR) $(LLVM_CLANG_TAR) $(LLVM_COMPILER_RT_TAR) $(LLVM_LIBCXX_TAR) $(LLVM_LLDB_TAR)
+get-libllvm: $(LLVM_TAR) $(LLVM_CLANG_TAR) $(LLVM_COMPILER_RT_TAR) $(LLVM_LIBCXX_TAR) $(LLVM_LLDB_TAR)
 else
-get-llvm: $(LLVM_SRC_DIR)/source-extracted
+get-libllvm: $(LLVM_SRC_DIR)/source-extracted
 endif
-extract-llvm: $(LLVM_SRC_DIR)/source-extracted
-configure-llvm: $(LLVM_BUILDDIR_withtype)/build-configured
-compile-llvm: $(LLVM_BUILDDIR_withtype)/build-compiled
-fastcheck-llvm: #none
-check-llvm: $(LLVM_BUILDDIR_withtype)/build-checked
+extract-libllvm: $(LLVM_SRC_DIR)/source-extracted
+configure-libllvm: $(LLVM_BUILDDIR_withtype)/build-configured
+compile-libllvm: $(LLVM_BUILDDIR_withtype)/build-compiled
+fastcheck-libllvm: #none
+check-libllvm: $(LLVM_BUILDDIR_withtype)/build-checked
 #todo: LLVM make check target is broken on julia.mit.edu (and really slow elsewhere)
 
 
 ifeq ($(LLVM_VER),svn)
-update-llvm:
+update-libllvm:
 	cd $(LLVM_MONOSRC_DIR) && \
 		git pull --ff-only
 endif
@@ -507,17 +507,16 @@ endif
 $(eval $(call jll-generate,libLLVM_jll,libllvm=\"libLLVM\", \
                                        llvm_config=\"llvm-config\", \
                            8f36deef-c2a5-5394-99ed-8e07531fb29a,))
-install-llvm: install-libLLVM_jll
+install-libllvm: install-libLLVM_jll
 
 else # USE_BINARYBUILDER_LLVM
 
 # Install libLLVM_jll into our stdlib folder
 $(eval $(call install-jll-and-artifact,libLLVM_jll))
 
-# Insert llvm -> libLLVM naming adapters
-$(eval $(call fix-artifact-naming-mismatch,llvm,libLLVM_jll))
-
-# Add rules to install Clang_jll
+# Add rules to install Clang_jll and LLVM_jll (not installed by default; but fetched for
+# things like analyzegc pass)
 $(eval $(call install-jll-and-artifact,Clang_jll))
+$(eval $(call install-jll-and-artifact,LLVM_jll))
 
 endif # USE_BINARYBUILDER_LLVM

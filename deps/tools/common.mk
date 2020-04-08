@@ -235,4 +235,4 @@ endef
 
 .PHONY: default get extract configure compile fastcheck check install uninstall reinstall cleanall distcleanall \
 	get-* extract-* configure-* compile-* fastcheck-* check-* install-* uninstall-* reinstall-* clean-* distclean-* \
-	update-llvm
+	update-libllvm
