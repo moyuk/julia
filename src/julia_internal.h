@@ -921,6 +921,11 @@ unsigned jl_intrinsic_nargs(int f) JL_NOTSAFEPOINT;
 JL_DLLEXPORT jl_value_t *jl_bitcast(jl_value_t *ty, jl_value_t *v);
 JL_DLLEXPORT jl_value_t *jl_pointerref(jl_value_t *p, jl_value_t *i, jl_value_t *align);
 JL_DLLEXPORT jl_value_t *jl_pointerset(jl_value_t *p, jl_value_t *x, jl_value_t *align, jl_value_t *i);
+JL_DLLEXPORT jl_value_t *jl_atomics_fence(jl_value_t *order);
+JL_DLLEXPORT jl_value_t *jl_atomics_pointerref(jl_value_t *p, jl_value_t *order);
+JL_DLLEXPORT jl_value_t *jl_atomics_pointerset(jl_value_t *p, jl_value_t *x, jl_value_t *order);
+JL_DLLEXPORT jl_value_t *jl_atomics_pointercmpxchg(jl_value_t *p, jl_value_t *x, jl_value_t *expected, jl_value_t *order);
+JL_DLLEXPORT jl_value_t *jl_atomics_pointerop(jl_value_t *p, jl_value_t *x, jl_value_t *f, jl_value_t *order);
 JL_DLLEXPORT jl_value_t *jl_cglobal(jl_value_t *v, jl_value_t *ty);
 JL_DLLEXPORT jl_value_t *jl_cglobal_auto(jl_value_t *v);
 
