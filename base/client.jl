@@ -429,7 +429,7 @@ function include(fname::AbstractString)
     isa(fname, String) || (fname = Base.convert(String, fname)::String)
     Base._include(identity, Main, fname)
 end
-eval(x) = Core.eval(Main, x)
+eval(x) = Base.eval(Main, x)
 end
 
 """

@@ -187,7 +187,7 @@
        (= (call eval ,x)
           (block
            ,@loc
-           (call (core eval) ,name ,x)))
+           (call (top eval) ,name ,x)))
        (= (call include ,x)
           (block
            ,@loc

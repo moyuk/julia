@@ -35,7 +35,9 @@ setproperty!(x, f::Symbol, v) = setfield!(x, f, convert(fieldtype(typeof(x), f),
 
 include("coreio.jl")
 
-eval(x) = Core.eval(Base, x)
+eval(x) = eval(Base, x)
+# During bootstrap, Base.eval is simply Core.eval.
+# Later we redefine it to the full version.
 eval(m::Module, x) = Core.eval(m, x)
 
 # init core docsystem
@@ -367,6 +369,18 @@ end
 # nicer stacktraces. Modifications here have to be backported there
 include(mod::Module, _path::AbstractString) = _include(identity, mod, _path)
 include(mapexpr::Function, mod::Module, _path::AbstractString) = _include(mapexpr, mod, _path)
+
+# Make `eval` point to the full version
+foreach(delete_method, methods(eval, (Module, Any)))
+function eval(m::Module, ex)
+    if @ccall(jl_is_closed_module(m::Any)::Cint) != 0
+        @warn """Eval into closed module `$m`.
+
+                 **Incremental compilation may be fatally broken for this module**""" #=
+                 =# expression=ex mod=m
+    end
+    Core.eval(Base, ex)
+end
 
 end_base_include = time_ns()
 

@@ -832,15 +832,6 @@ JL_DLLEXPORT jl_value_t *jl_toplevel_eval_in(jl_module_t *m, jl_value_t *ex)
     const char *last_filename = jl_filename;
     jl_lineno = 1;
     jl_filename = "none";
-    if (jl_options.incremental && jl_generating_output()) {
-        if (!ptrhash_has(&jl_current_modules, (void*)m)) {
-            if (m != jl_main_module) { // TODO: this was grand-fathered in
-                jl_printf(JL_STDERR, "WARNING: eval into closed module %s:\n", jl_symbol_name(m->name));
-                jl_static_show(JL_STDERR, ex);
-                jl_printf(JL_STDERR, "\n  ** incremental compilation may be fatally broken for this module **\n\n");
-            }
-        }
-    }
     JL_TRY {
         v = jl_toplevel_eval(m, ex);
     }
@@ -1001,6 +992,12 @@ JL_DLLEXPORT jl_value_t *jl_load_file_string(const char *text, size_t len,
     return result;
 }
 
+JL_DLLEXPORT int jl_is_closed_module(jl_module_t *mod)
+{
+    return jl_options.incremental && jl_generating_output() &&
+           !ptrhash_has(&jl_current_modules, (void*)mod)    &&
+            mod != jl_main_module; // TODO: this was grand-fathered in
+}
 
 //--------------------------------------------------
 // Code loading helpers for bootstrap
