@@ -466,9 +466,10 @@ PATHSEP := ;
 endif
 
 # Use this to set up the appropriate environment variables to run things like `clang` from `Clang_jll`.
-# Example usage: $(call jll_env_adjust,libLLVM_jll CompilerSupportLibraries_jll) clang --version
+# Example usage: $(call jll_env_adjust,libLLVM_jll CompilerSupportLibraries_jll) $(clang_path) --version
+# We use `$(wildcard $(1))` here to include only entries that exist.
 define env_adjust
-$(EXE_ENV_VAR)=$(subst $(SPACE),$(PATHSEP),$(1))$(PATHSEP)$$$(EXE_ENV_VAR) $(if $(LIB_ENV_VAR),$(LIB_ENV_VAR)=$(subst $(SPACE),:,$(2)):$$$(LIB_ENV_VAR),)
+$(EXE_ENV_VAR)=$(subst $(SPACE),$(PATHSEP),$(wildcard $(1)))$(PATHSEP)$$$(EXE_ENV_VAR) $(if $(LIB_ENV_VAR),$(LIB_ENV_VAR)=$(subst $(SPACE),:,$(wildcard $(2))):$$$(LIB_ENV_VAR),)
 endef
 define jll_env_adjust
 $(call env_adjust,$(foreach name,$(1),$($(name)_DIR)/bin $($(name)_DIR)/tools),$(foreach name,$(1),$($(name)_DIR)/lib))
