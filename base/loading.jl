@@ -1070,7 +1070,7 @@ function _require(pkg::PkgId)
     nothing
 end
 
-# Code loading with a relative path --- include_string(), include(), evalfile()
+# relative-path load
 
 """
     include_string([mapexpr::Function,] m::Module, code::AbstractString, filename::AbstractString="string")
@@ -1135,14 +1135,12 @@ function evalfile(path::AbstractString, args::Vector{String}=String[])
     return Core.eval(Module(:__anon__),
         Expr(:toplevel,
              :(const ARGS = $args),
-             :(eval(x) = $(Expr(:top, :eval))(__anon__, x)),
+             :(eval(x) = $(Expr(:core, :eval))(__anon__, x)),
              :(include(x) = $(Expr(:top, :include))(__anon__, x)),
              :(include(mapexpr::Function, x) = $(Expr(:top, :include))(mapexpr, __anon__, x)),
              :(include($path))))
 end
 evalfile(path::AbstractString, args::Vector) = evalfile(path, String[args...])
-
-# Compile cache ----------------------------
 
 function load_path_setup_code(load_path::Bool=true)
     code = """
