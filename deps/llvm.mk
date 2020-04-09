@@ -519,4 +519,7 @@ $(eval $(call install-jll-and-artifact,libLLVM_jll))
 $(eval $(call install-jll-and-artifact,Clang_jll))
 $(eval $(call install-jll-and-artifact,LLVM_jll))
 
+
+install-llvm: install-libllvm
+install-clang: install-libllvm
 endif # USE_BINARYBUILDER_LLVM
